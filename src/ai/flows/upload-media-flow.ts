@@ -28,29 +28,20 @@ export type UploadMediaOutput = z.infer<typeof UploadMediaOutputSchema>;
 
 
 export async function uploadMedia(input: UploadMediaInput): Promise<UploadMediaOutput> {
-  const imageKitConfig = {
-    publicKey: 'public_3BzpFL5pqk2Qn42+6s7TAa0gFqc=',
-    privateKey: 'private_gDgJMY3xa9l+pkjMH6r2OIg3UfA=',
-    urlEndpoint: 'https://ik.imagekit.io/oco6vyb1z',
-  };
-  return uploadMediaFlow({ ...input, ...imageKitConfig });
+  return uploadMediaFlow(input);
 }
 
 const uploadMediaFlow = ai.defineFlow(
   {
     name: 'uploadMediaFlow',
-    inputSchema: UploadMediaInputSchema.extend({
-      publicKey: z.string(),
-      privateKey: z.string(),
-      urlEndpoint: z.string(),
-    }),
+    inputSchema: UploadMediaInputSchema,
     outputSchema: UploadMediaOutputSchema,
   },
   async (input) => {
     const imagekit = new ImageKit({
-      publicKey: input.publicKey,
-      privateKey: input.privateKey,
-      urlEndpoint: input.urlEndpoint,
+      publicKey: 'public_3BzpFL5pqk2Qn42+6s7TAa0gFqc=',
+      privateKey: 'private_gDgJMY3xa9l+pkjMH6r2OIg3UfA=',
+      urlEndpoint: 'https://ik.imagekit.io/oco6vyb1z',
     });
 
     try {
@@ -80,7 +71,7 @@ const uploadMediaFlow = ai.defineFlow(
 
     } catch (error: any) {
         console.error('ImageKit upload failed:', error);
-        throw new Error(`Media upload failed: ${error.message}`);
+        throw new Error(`Media upload failed: ${error.message || 'Unknown ImageKit error'}`);
     }
   }
 );
