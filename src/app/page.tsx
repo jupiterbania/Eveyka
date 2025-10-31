@@ -165,11 +165,11 @@ export default function Home() {
           for (let i = 0; i < totalFiles; i++) {
             const file = mediaFiles[i];
             
-            if (file.size > 99 * 1024 * 1024) { // 99MB limit
+            if (file.size > 500 * 1024 * 1024) { // 500MB limit
               toast({
                 variant: 'destructive',
                 title: 'File Too Large',
-                description: `"${file.name}" is larger than the 99MB limit and was skipped.`,
+                description: `"${file.name}" is larger than the 500MB limit and was skipped.`,
               });
               setUploadProgress(((i + 1) / totalFiles) * 100);
               continue;
@@ -288,13 +288,13 @@ export default function Home() {
                       <DialogHeader>
                         <DialogTitle>Upload New Media</DialogTitle>
                         <DialogDescription>
-                          Select one or more image/video files (max 99MB) to add to the gallery. You can also provide a URL for a single image.
+                          Select one or more image/video files (max 500MB) to add to the gallery. You can also provide a URL for a single image.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
                         <div className="grid w-full items-center gap-1.5">
                           <Label htmlFor="mediaFile">Media File(s)</Label>
-                          <Input id="mediaFile" type="file" accept="image/*,video/mp4,video/quicktime" multiple
+                          <Input id="mediaFile" type="file" accept="image/*,video/mp4,video/quicktime,video/x-m4v,video/*" multiple
                             onChange={(e) => {
                                 setMediaFiles(e.target.files);
                                 if (e.target.files?.length) setMediaUrl('');

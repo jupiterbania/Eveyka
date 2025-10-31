@@ -142,11 +142,11 @@ export function ImageManagement() {
     
               for (let i = 0; i < totalFiles; i++) {
                 const file = mediaFiles[i];
-                if (file.size > 99 * 1024 * 1024) {
+                if (file.size > 500 * 1024 * 1024) { // 500MB limit
                   toast({
                     variant: 'destructive',
                     title: 'File Too Large',
-                    description: `"${file.name}" is larger than the 99MB limit and was skipped.`,
+                    description: `"${file.name}" is larger than the 500MB limit and was skipped.`,
                   });
                   setUploadProgress(((i + 1) / totalFiles) * 100);
                   continue;
@@ -233,13 +233,13 @@ export function ImageManagement() {
             <DialogHeader>
               <DialogTitle>Upload New Media</DialogTitle>
               <DialogDescription>
-                 Select image or video files to add. Max size is 99MB. You can also provide a URL for a single image.
+                 Select image or video files to add. Max size is 500MB. You can also provide a URL for a single image.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
               <div className="grid w-full items-center gap-1.5">
                 <Label htmlFor="mediaFile-admin">Media File(s)</Label>
-                <Input id="mediaFile-admin" type="file" accept="image/*,video/mp4,video/quicktime" multiple
+                <Input id="mediaFile-admin" type="file" accept="image/*,video/mp4,video/quicktime,video/x-m4v,video/*" multiple
                     onChange={(e) => {
                         setMediaFiles(e.target.files);
                         if (e.target.files?.length) setMediaUrl('');
