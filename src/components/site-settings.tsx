@@ -47,6 +47,8 @@ export function SiteSettings() {
       return;
     }
 
+    if (!settingsDocRef) return;
+
     setIsUploading(true);
 
     try {
@@ -71,6 +73,9 @@ export function SiteSettings() {
         });
         setHeroImageFile(null);
       };
+      reader.onerror = () => {
+          throw new Error('Could not read the selected file.');
+      }
     } catch (error: any) {
       toast({
         variant: 'destructive',
