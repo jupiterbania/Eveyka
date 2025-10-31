@@ -186,7 +186,7 @@ export default function Home() {
             const result = await processAndUploadMedia({ mediaDataUri: reader, mediaType });
             
             const docData: any = {
-              title: isMultiple ? file.name.replace(/\.[^/.]+$/, "") : newMedia.title,
+              title: isMultiple ? '' : newMedia.title,
               description: newMedia.description,
               mediaUrl: result.mediaUrl,
               mediaType: mediaType,
@@ -264,7 +264,7 @@ export default function Home() {
           />
           <div className="absolute inset-0 bg-black/50" />
           <div className="relative z-10 p-4">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white drop-shadow-md font-headline">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white drop-shadow-xl font-headline">
               WELCOME TO MY EXCLUSIVE CONTENT
             </h1>
           </div>
