@@ -1,3 +1,4 @@
+
 'use client';
 import { Header } from '@/components/header';
 import { Footer } from '@/components/footer';
@@ -25,8 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, Film, ImageIcon } from 'lucide-react';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { uploadMedia } from '@/ai/flows/upload-media-flow';
-import { extractDominantColor } from '@/ai/flows/extract-color-flow';
+import { processAndUploadMedia } from '@/ai/flows/process-and-upload-media-flow';
 import { AdBanner } from '@/components/ad-banner';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
@@ -164,6 +164,17 @@ export default function Home() {
 
           for (let i = 0; i < totalFiles; i++) {
             const file = mediaFiles[i];
+            
+            if (file.size > 500 * 1024 * 1024) { // 500MB limit
+              toast({
+                variant: 'destructive',
+                title: 'File Too Large',
+                description: `"${file.name}" is larger than the 500MB limit and was skipped.`,
+              });
+              setUploadProgress(((i + 1) / totalFiles) * 100);
+              continue;
+            }
+
             const reader = await new Promise<string>((resolve, reject) => {
               const fileReader = new FileReader();
               fileReader.readAsDataURL(file);
@@ -171,39 +182,29 @@ export default function Home() {
               fileReader.onerror = (error) => reject(error);
             });
 
-            const uploadResult = await uploadMedia({ mediaDataUri: reader, isVideo: file.type.startsWith('video/') });
-            if (!uploadResult || !uploadResult.mediaUrl) {
-              throw new Error('Media URL was not returned from the upload service.');
-            }
-            
             const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
-            let dominantColor = '#F0F4F8';
-            if (mediaType === 'image') {
-              const colorResult = await extractDominantColor({ photoDataUri: reader });
-              dominantColor = colorResult.dominantColor || '#F0F4F8';
-            }
+            const result = await processAndUploadMedia({ mediaDataUri: reader, mediaType });
             
             const docData: any = {
               title: isMultiple ? '' : newMedia.title,
               description: newMedia.description,
-              mediaUrl: uploadResult.mediaUrl,
+              mediaUrl: result.mediaUrl,
               mediaType: mediaType,
               uploadDate: serverTimestamp(),
             };
 
-            if (uploadResult.thumbnailUrl) {
-                docData.thumbnailUrl = uploadResult.thumbnailUrl;
+            if (result.thumbnailUrl) {
+                docData.thumbnailUrl = result.thumbnailUrl;
             }
 
-            if (mediaType === 'image') {
-                docData.dominantColor = dominantColor;
+            if (result.dominantColor) {
+                docData.dominantColor = result.dominantColor;
             }
             
             addDocumentNonBlocking(mediaCollection, docData);
             setUploadProgress(((i + 1) / totalFiles) * 100);
           }
         } else if (mediaUrl) {
-            // Simple URL upload assumes image for now. Can be enhanced.
           setUploadProgress(50);
           addDocumentNonBlocking(
             mediaCollection,
@@ -221,7 +222,7 @@ export default function Home() {
         setTimeout(() => setIsUploading(false), 1000);
         resetUploadForm();
         toast({
-          title: mediaFiles && mediaFiles.length > 1 ? `${mediaFiles.length} files Added!` : 'Media Added!',
+          title: mediaFiles && mediaFiles.length > 1 ? `Upload Complete!` : 'Media Added!',
           description: 'The new media is now live in the gallery.',
         });
 
@@ -263,7 +264,7 @@ export default function Home() {
           />
           <div className="absolute inset-0 bg-black/50" />
           <div className="relative z-10 p-4">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white drop-shadow-md font-headline">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white drop-shadow-xl font-headline">
               WELCOME TO MY EXCLUSIVE CONTENT
             </h1>
           </div>
@@ -287,13 +288,13 @@ export default function Home() {
                       <DialogHeader>
                         <DialogTitle>Upload New Media</DialogTitle>
                         <DialogDescription>
-                          Select one or more image/video files (max 99MB) to add to the gallery. You can also provide a URL for a single image.
+                          Select one or more image/video files (max 500MB) to add to the gallery. You can also provide a URL for a single image.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
                         <div className="grid w-full items-center gap-1.5">
                           <Label htmlFor="mediaFile">Media File(s)</Label>
-                          <Input id="mediaFile" type="file" accept="image/*,video/mp4,video/quicktime" multiple
+                          <Input id="mediaFile" type="file" accept="image/*,video/mp4,video/quicktime,video/x-m4v,video/*" multiple
                             onChange={(e) => {
                                 setMediaFiles(e.target.files);
                                 if (e.target.files?.length) setMediaUrl('');

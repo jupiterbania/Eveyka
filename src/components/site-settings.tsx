@@ -16,7 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { uploadMedia } from '@/ai/flows/upload-image-flow';
+import { uploadMedia } from '@/ai/flows/upload-media-flow';
 import type { SiteSettings as SiteSettingsType } from '@/lib/types';
 import { placeholderImages } from '@/lib/placeholder-images';
 import { Upload } from 'lucide-react';
@@ -47,14 +47,16 @@ export function SiteSettings() {
       return;
     }
 
+    if (!settingsDocRef) return;
+
     setIsUploading(true);
 
     try {
       const reader = new FileReader();
       reader.readAsDataURL(heroImageFile);
       reader.onload = async () => {
-        const mediaDataUri = reader.result as string;
-        const result = await uploadMedia({ mediaDataUri });
+        const photoDataUri = reader.result as string;
+        const result = await uploadMedia({ mediaDataUri: photoDataUri, isVideo: false });
 
         if (!result || !result.mediaUrl) {
           throw new Error('Image URL was not returned from the upload service.');
@@ -71,6 +73,9 @@ export function SiteSettings() {
         });
         setHeroImageFile(null);
       };
+      reader.onerror = () => {
+          throw new Error('Could not read the selected file.');
+      }
     } catch (error: any) {
       toast({
         variant: 'destructive',

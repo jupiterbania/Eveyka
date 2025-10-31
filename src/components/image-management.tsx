@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from 'react';
@@ -49,8 +50,7 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, doc, serverTimestamp } from 'firebase/firestore';
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { Textarea } from './ui/textarea';
-import { uploadMedia } from '@/ai/flows/upload-media-flow';
-import { extractDominantColor } from '@/ai/flows/extract-color-flow';
+import { processAndUploadMedia } from '@/ai/flows/process-and-upload-media-flow';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
 
@@ -135,96 +135,83 @@ export function ImageManagement() {
     setUploadProgress(0);
 
     const performUpload = async () => {
-      try {
-        if (mediaFiles && mediaFiles.length > 0) {
-          const totalFiles = mediaFiles.length;
-          const isMultiple = totalFiles > 1;
+        try {
+            if (mediaFiles && mediaFiles.length > 0) {
+              const totalFiles = mediaFiles.length;
+              const isMultiple = totalFiles > 1;
+    
+              for (let i = 0; i < totalFiles; i++) {
+                const file = mediaFiles[i];
+                if (file.size > 500 * 1024 * 1024) { // 500MB limit
+                  toast({
+                    variant: 'destructive',
+                    title: 'File Too Large',
+                    description: `"${file.name}" is larger than the 500MB limit and was skipped.`,
+                  });
+                  setUploadProgress(((i + 1) / totalFiles) * 100);
+                  continue;
+                }
+    
+                const reader = await new Promise<string>((resolve, reject) => {
+                  const fileReader = new FileReader();
+                  fileReader.readAsDataURL(file);
+                  fileReader.onload = () => resolve(fileReader.result as string);
+                  fileReader.onerror = (error) => reject(error);
+                });
+    
+                const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
+                const result = await processAndUploadMedia({ mediaDataUri: reader, mediaType });
 
-          for (let i = 0; i < totalFiles; i++) {
-            const file = mediaFiles[i];
-            if (file.size > 99 * 1024 * 1024) {
-              toast({
-                variant: 'destructive',
-                title: 'File Too Large',
-                description: `"${file.name}" is larger than the 99MB limit.`
-              });
-              continue;
-            }
-
-            const reader = await new Promise<string>((resolve, reject) => {
-              const fileReader = new FileReader();
-              fileReader.readAsDataURL(file);
-              fileReader.onload = () => resolve(fileReader.result as string);
-              fileReader.onerror = (error) => reject(error);
-            });
-
-            const isVideo = file.type.startsWith('video/');
-            const uploadResult = await uploadMedia({ mediaDataUri: reader, isVideo });
-            if (!uploadResult || !uploadResult.mediaUrl) {
-              throw new Error('Media URL was not returned from the upload service.');
+                const docData: any = {
+                    title: isMultiple ? '' : newMedia.title,
+                    description: newMedia.description,
+                    mediaUrl: result.mediaUrl,
+                    mediaType: mediaType,
+                    uploadDate: serverTimestamp(),
+                };
+    
+                if (result.thumbnailUrl) {
+                    docData.thumbnailUrl = result.thumbnailUrl;
+                }
+    
+                if (result.dominantColor) {
+                    docData.dominantColor = result.dominantColor;
+                }
+    
+                addDocumentNonBlocking(mediaCollection, docData);
+                setUploadProgress(((i + 1) / totalFiles) * 100);
+              }
+            } else if (mediaUrl) {
+              setUploadProgress(50);
+              addDocumentNonBlocking(
+                mediaCollection,
+                {
+                  ...newMedia,
+                  mediaUrl: mediaUrl,
+                  mediaType: 'image',
+                  uploadDate: serverTimestamp(),
+                  dominantColor: '#F0F4F8',
+                }
+              );
+              setUploadProgress(100);
             }
             
-            const mediaType = isVideo ? 'video' : 'image';
-            let dominantColor = '#F0F4F8';
-            if (mediaType === 'image') {
-              try {
-                const colorResult = await extractDominantColor({ photoDataUri: reader });
-                dominantColor = colorResult.dominantColor || '#F0F4F8';
-              } catch (colorError) {
-                console.warn("Could not extract color, using default.", colorError);
-              }
-            }
-
-            const docData: any = {
-                title: isMultiple ? '' : newMedia.title,
-                description: newMedia.description,
-                mediaUrl: uploadResult.mediaUrl,
-                mediaType: mediaType,
-                uploadDate: serverTimestamp(),
-            };
-
-            if (uploadResult.thumbnailUrl) {
-                docData.thumbnailUrl = uploadResult.thumbnailUrl;
-            }
-
-            if (mediaType === 'image') {
-                docData.dominantColor = dominantColor;
-            }
-
-            addDocumentNonBlocking(mediaCollection, docData);
-            setUploadProgress(((i + 1) / totalFiles) * 100);
-          }
-        } else if (mediaUrl) {
-          setUploadProgress(50);
-          addDocumentNonBlocking(
-            mediaCollection,
-            {
-              ...newMedia,
-              mediaUrl: mediaUrl,
-              mediaType: 'image',
-              uploadDate: serverTimestamp(),
-              dominantColor: '#F0F4F8',
-            }
-          );
-          setUploadProgress(100);
-        }
+            setTimeout(() => setIsUploading(false), 1000);
         
-        setTimeout(() => setIsUploading(false), 1000);
-    
-        resetUploadForm();
-        toast({
-          title: mediaFiles && mediaFiles.length > 1 ? `Upload Complete!` : 'Media Uploaded!',
-          description: 'The new media is now live in the gallery.',
-        });
-      } catch (error: any) {
-        console.error('Upload process failed:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Upload Failed',
-          description: error.message || 'An unknown error occurred during upload.',
-        });
-        setIsUploading(false);
-      }
+            resetUploadForm();
+            toast({
+              title: mediaFiles && mediaFiles.length > 1 ? `Upload Complete!` : 'Media Uploaded!',
+              description: 'The new media is now live in the gallery.',
+            });
+          } catch (error: any) {
+            console.error('Upload process failed:', error);
+            toast({
+              variant: 'destructive',
+              title: 'Upload Failed',
+              description: error.message || 'An unknown error occurred during upload.',
+            });
+            setIsUploading(false);
+          }
     };
     performUpload();
   };
@@ -246,13 +233,13 @@ export function ImageManagement() {
             <DialogHeader>
               <DialogTitle>Upload New Media</DialogTitle>
               <DialogDescription>
-                 Select image or video files to add. Max size is 99MB. You can also provide a URL for a single image.
+                 Select image or video files to add. Max size is 500MB. You can also provide a URL for a single image.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
               <div className="grid w-full items-center gap-1.5">
                 <Label htmlFor="mediaFile-admin">Media File(s)</Label>
-                <Input id="mediaFile-admin" type="file" accept="image/*,video/mp4,video/quicktime" multiple
+                <Input id="mediaFile-admin" type="file" accept="image/*,video/mp4,video/quicktime,video/x-m4v,video/*" multiple
                     onChange={(e) => {
                         setMediaFiles(e.target.files);
                         if (e.target.files?.length) setMediaUrl('');
@@ -422,3 +409,5 @@ export function ImageManagement() {
     </Card>
   );
 }
+
+    
