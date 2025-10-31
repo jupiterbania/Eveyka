@@ -26,8 +26,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Upload, Film, ImageIcon } from 'lucide-react';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { uploadMedia } from '@/ai/flows/upload-media-flow';
-import { extractDominantColor } from '@/ai/flows/extract-color-flow';
+import { processAndUploadMedia } from '@/ai/flows/process-and-upload-media-flow';
 import { AdBanner } from '@/components/ad-banner';
 import { cn } from '@/lib/utils';
 import { Progress } from '@/components/ui/progress';
@@ -183,43 +182,29 @@ export default function Home() {
               fileReader.onerror = (error) => reject(error);
             });
 
-            const uploadResult = await uploadMedia({ mediaDataUri: reader, isVideo: file.type.startsWith('video/') });
-            if (!uploadResult || !uploadResult.mediaUrl) {
-              throw new Error('Media URL was not returned from the upload service.');
-            }
-            
             const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
-            let dominantColor = '#F0F4F8';
-            if (mediaType === 'image') {
-              try {
-                const colorResult = await extractDominantColor({ photoDataUri: reader });
-                dominantColor = colorResult.dominantColor || '#F0F4F8';
-              } catch (colorError) {
-                console.warn("Could not extract color, using default.", colorError);
-              }
-            }
+            const result = await processAndUploadMedia({ mediaDataUri: reader, mediaType });
             
             const docData: any = {
-              title: isMultiple ? '' : newMedia.title,
+              title: isMultiple ? file.name.replace(/\.[^/.]+$/, "") : newMedia.title,
               description: newMedia.description,
-              mediaUrl: uploadResult.mediaUrl,
+              mediaUrl: result.mediaUrl,
               mediaType: mediaType,
               uploadDate: serverTimestamp(),
             };
 
-            if (uploadResult.thumbnailUrl) {
-                docData.thumbnailUrl = uploadResult.thumbnailUrl;
+            if (result.thumbnailUrl) {
+                docData.thumbnailUrl = result.thumbnailUrl;
             }
 
-            if (mediaType === 'image') {
-                docData.dominantColor = dominantColor;
+            if (result.dominantColor) {
+                docData.dominantColor = result.dominantColor;
             }
             
             addDocumentNonBlocking(mediaCollection, docData);
             setUploadProgress(((i + 1) / totalFiles) * 100);
           }
         } else if (mediaUrl) {
-            // Simple URL upload assumes image for now. Can be enhanced.
           setUploadProgress(50);
           addDocumentNonBlocking(
             mediaCollection,
@@ -435,7 +420,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
-
-    

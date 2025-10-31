@@ -1,10 +1,9 @@
+
 'use server';
 /**
  * @fileOverview A flow for uploading media to an external service.
  *
  * - uploadMedia - A function that handles the media upload process.
- * - UploadMediaInput - The input type for the uploadMedia function.
- * - UploadMediaOutput - The return type for the uploadMedia function.
  */
 
 import { ai } from '@/ai/genkit';
@@ -26,6 +25,7 @@ const UploadMediaOutputSchema = z.object({
   thumbnailUrl: z.string().url().optional().describe('The URL of the media thumbnail, if applicable.'),
 });
 export type UploadMediaOutput = z.infer<typeof UploadMediaOutputSchema>;
+
 
 export async function uploadMedia(input: UploadMediaInput): Promise<UploadMediaOutput> {
   const imageKitConfig = {
@@ -60,6 +60,10 @@ const uploadMediaFlow = ai.defineFlow(
         useUniqueFileName: true,
       };
 
+       if (input.isVideo) {
+        uploadOptions.transformation = [{ "name": "Video Thumbnail", "options": { "format": "jpg", "quality": 80 } }];
+      }
+
       const response = await imagekit.upload(uploadOptions);
 
       if (!response.url) {
@@ -67,7 +71,6 @@ const uploadMediaFlow = ai.defineFlow(
         throw new Error('ImageKit response did not include a URL.');
       }
       
-      // Handle cases where video thumbnail is in a metadata object
       const thumbnailUrl = response.thumbnailUrl || (response.metadata as any)?.thumbnailUrl;
 
       return {
