@@ -76,8 +76,8 @@ const uploadMediaFlow = ai.defineFlow(
 
     } catch (error: any) {
         console.error('ImageKit upload failed:', error);
-        // Re-throw the original error to propagate detailed information to the client.
-        throw error;
+        // Re-throw a clean error with just the message for the client.
+        throw new Error(error.message || 'An unknown error occurred during media upload.');
     }
   }
 );
