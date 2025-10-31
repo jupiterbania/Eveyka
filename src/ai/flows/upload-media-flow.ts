@@ -52,7 +52,10 @@ const uploadMediaFlow = ai.defineFlow(
       };
 
        if (input.isVideo) {
-        uploadOptions.transformation = [{ "name": "Video Thumbnail", "options": { "format": "jpg", "quality": 80 } }];
+        // For videos, ImageKit can generate thumbnails. This is specified via transformations.
+        // The transformation name 'Video Thumbnail' must be created in your ImageKit dashboard.
+        // It might define settings like format (jpg), quality, and size.
+        uploadOptions.transformation = [{ "name": "Video Thumbnail" }];
       }
 
       const response = await imagekit.upload(uploadOptions);
@@ -62,6 +65,8 @@ const uploadMediaFlow = ai.defineFlow(
         throw new Error('ImageKit response did not include a URL.');
       }
       
+      // The thumbnailUrl for videos might be in a different location depending on your ImageKit setup.
+      // Checking both response.thumbnailUrl and response.metadata is a robust way to find it.
       const thumbnailUrl = response.thumbnailUrl || (response.metadata as any)?.thumbnailUrl;
 
       return {
@@ -71,7 +76,10 @@ const uploadMediaFlow = ai.defineFlow(
 
     } catch (error: any) {
         console.error('ImageKit upload failed:', error);
+        // Re-throw a more specific error to be caught by the calling flow.
         throw new Error(`Media upload failed: ${error.message || 'Unknown ImageKit error'}`);
     }
   }
 );
+
+    

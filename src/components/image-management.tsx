@@ -163,7 +163,7 @@ export function ImageManagement() {
                 const result = await processAndUploadMedia({ mediaDataUri: reader, mediaType });
 
                 const docData: any = {
-                    title: isMultiple ? file.name.replace(/\.[^/.]+$/, "") : newMedia.title,
+                    title: isMultiple ? '' : newMedia.title,
                     description: newMedia.description,
                     mediaUrl: result.mediaUrl,
                     mediaType: mediaType,
@@ -409,3 +409,5 @@ export function ImageManagement() {
     </Card>
   );
 }
+
+    
