@@ -179,8 +179,12 @@ export default function Home() {
             const mediaType = file.type.startsWith('video/') ? 'video' : 'image';
             let dominantColor = '#F0F4F8';
             if (mediaType === 'image') {
-              const colorResult = await extractDominantColor({ photoDataUri: reader });
-              dominantColor = colorResult.dominantColor || '#F0F4F8';
+              try {
+                const colorResult = await extractDominantColor({ photoDataUri: reader });
+                dominantColor = colorResult.dominantColor || '#F0F4F8';
+              } catch (colorError) {
+                console.warn("Could not extract color, using default.", colorError);
+              }
             }
             
             const docData: any = {
@@ -419,3 +423,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
