@@ -146,8 +146,9 @@ export function ImageManagement() {
               toast({
                 variant: 'destructive',
                 title: 'File Too Large',
-                description: `"${file.name}" is larger than the 99MB limit.`
+                description: `"${file.name}" is larger than the 99MB limit and was skipped.`,
               });
+              setUploadProgress(((i + 1) / totalFiles) * 100);
               continue;
             }
 

@@ -164,6 +164,17 @@ export default function Home() {
 
           for (let i = 0; i < totalFiles; i++) {
             const file = mediaFiles[i];
+            
+            if (file.size > 99 * 1024 * 1024) { // 99MB limit
+              toast({
+                variant: 'destructive',
+                title: 'File Too Large',
+                description: `"${file.name}" is larger than the 99MB limit and was skipped.`,
+              });
+              setUploadProgress(((i + 1) / totalFiles) * 100);
+              continue;
+            }
+
             const reader = await new Promise<string>((resolve, reject) => {
               const fileReader = new FileReader();
               fileReader.readAsDataURL(file);
@@ -225,7 +236,7 @@ export default function Home() {
         setTimeout(() => setIsUploading(false), 1000);
         resetUploadForm();
         toast({
-          title: mediaFiles && mediaFiles.length > 1 ? `${mediaFiles.length} files Added!` : 'Media Added!',
+          title: mediaFiles && mediaFiles.length > 1 ? `Upload Complete!` : 'Media Added!',
           description: 'The new media is now live in the gallery.',
         });
 
